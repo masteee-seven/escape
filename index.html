@@ -465,7 +465,7 @@ function showToast(msg){
 }
 
 /* ---------------- 画面: スタート ---------------- */
-function renderStart(){
+function renderStart(speak){
   headerTitle.textContent = "整備工場からの脱出";
   bayRow.style.display = 'none';
   screen.innerHTML = `
@@ -482,6 +482,7 @@ function renderStart(){
       <button class="primary" id="startBtn" disabled>ミッション開始 / シャッターが閉まる前に</button>
     </div>
   `;
+  if(speak){ speakBriefing(); }
   const input = document.getElementById('teamInput');
   const btn = document.getElementById('startBtn');
   input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().length===0; });
@@ -569,6 +570,19 @@ function handleAnswer(stageIdx, choiceIdx){
 }
 
 /* ---------------- 画面フラッシュ・サイレン・SE ---------------- */
+function speakBriefing(){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const text = "原因は10個のコンプライアンス違反の芽、グレーゾーンの2択、正しい判断を選んでシャッターを開けろ。10個のコードを集めて、脱出せよ。";
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ja-JP';
+    utter.rate = 1.4;
+    utter.pitch = 1.0;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  }catch(e){ /* 読み上げに対応していない環境では無視 */ }
+}
+
 function playCorrectSound(){
   try{
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -827,7 +841,7 @@ function renderResult(){
 }
 
 /* ---------------- 起動 ---------------- */
-renderStart();
+renderStart(true);
 </script>
 </body>
 </html>
