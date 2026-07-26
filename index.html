@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>コンプラ脱出ゲーム | 整備工場からの脱出</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-dark:#12161d;
+    --bg-panel:#1c222c;
+    --bg-panel-2:#232a35;
+    --metal:#3a4250;
+    --metal-light:#4b5567;
+    --accent-yellow:#f5a623;
+    --accent-red:#e2503d;
+    --accent-green:#3ecf8e;
+    --text-light:#f4f1ea;
+    --text-muted:#8a93a6;
+    --stripe: repeating-linear-gradient(135deg, #f5a623 0 14px, #12161d 14px 28px);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-dark);
+    color:var(--text-light);
+    font-family:'Noto Sans JP', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{font-family:'Zen Kaku Gothic New', sans-serif; font-weight:900;}
+  .mono{font-family:'Share Tech Mono', monospace; letter-spacing:0.08em;}
+
+  #app{max-width:760px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+  /* ---- top hazard stripe ---- */
+  .hazard-strip{height:8px; background:var(--stripe); flex-shrink:0;}
+
+  /* ---- header / dashboard ---- */
+  header{
+    padding:18px 20px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--metal);
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; flex-direction:column; gap:2px;}
+  .brand .eyebrow{font-size:11px; letter-spacing:0.2em; color:var(--accent-yellow); text-transform:uppercase;}
+  .brand h1{font-size:19px; margin:0; line-height:1.3;}
+  .gauge-cluster{display:flex; align-items:center; gap:14px;}
+  .gauge{
+    background:var(--bg-panel-2); border:1px solid var(--metal);
+    border-radius:10px; padding:8px 14px; text-align:center; min-width:78px;
+  }
+  .gauge .label{font-size:10px; color:var(--text-muted); letter-spacing:0.1em;}
+  .gauge .value{font-size:20px; margin-top:2px;}
+  #timerValue.warn{color:var(--accent-red);}
+
+  main{flex:1; padding:20px; display:flex; flex-direction:column; gap:20px;}
+
+  /* ---- bay row (progress, signature element) ---- */
+  .bay-row{display:flex; flex-wrap:wrap; gap:6px; padding:14px; background:var(--bg-panel); border-radius:12px; border:1px solid var(--metal);}
+  .bay{
+    flex:1 1 40px; min-width:36px; position:relative; height:44px; border-radius:6px; overflow:hidden;
+    background:var(--bg-dark); border:1px solid var(--metal);
+  }
+  .bay .num{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:13px; color:var(--text-muted); z-index:1; font-family:'Share Tech Mono', monospace;
+  }
+  .bay.done .num{color:var(--bg-dark);}
+  .bay.current{border-color:var(--accent-yellow);}
+  .bay.failed{border-color:var(--accent-red);}
+  .bay.failed .num{color:var(--accent-red); z-index:3;}
+  .bay.failed::after{
+    content:"×"; position:absolute; inset:0; z-index:3;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--accent-red); font-size:20px; font-weight:900;
+  }
+  .shutter{
+    position:absolute; inset:0; z-index:2;
+    background:repeating-linear-gradient(0deg, var(--metal) 0 6px, var(--metal-light) 6px 11px);
+    transform:translateY(0%);
+    transition:transform 0.9s cubic-bezier(.4,1.4,.4,1);
+  }
+  .bay.done .shutter{transform:translateY(-100%);}
+  .bay.done{background:var(--accent-green);}
+
+  /* ---- panel / card ---- */
+  .panel{
+    background:var(--bg-panel); border:1px solid var(--metal); border-radius:14px;
+    padding:24px; position:relative;
+  }
+  .bay-tag{
+    display:flex; align-items:center; gap:8px; width:100%;
+    font-size:12px; color:var(--accent-yellow); letter-spacing:0.1em;
+    margin-bottom:10px; text-transform:uppercase;
+  }
+  .bay-tag .dot{width:7px; height:7px; border-radius:50%; background:var(--accent-yellow);}
+  .panel h2{font-size:20px; margin:0 0 14px;}
+  .scenario{
+    background:var(--bg-panel-2); border-left:3px solid var(--metal-light);
+    padding:14px 16px; border-radius:6px; font-size:15px; line-height:1.8; margin-bottom:18px;
+  }
+  .choices{display:flex; flex-direction:column; gap:10px;}
+  .choice{
+    display:flex; gap:12px; align-items:flex-start; text-align:left;
+    background:var(--bg-panel-2); border:1px solid var(--metal); color:var(--text-light);
+    padding:13px 16px; border-radius:8px; cursor:pointer; font-size:14.5px; line-height:1.6;
+    font-family:inherit; transition:border-color .15s, background .15s;
+  }
+  .choice:hover{border-color:var(--metal-light);}
+  .choice .letter{
+    font-family:'Share Tech Mono', monospace; color:var(--accent-yellow); flex-shrink:0; font-size:14px;
+  }
+  .choice.correct{border-color:var(--accent-green); background:rgba(62,207,142,0.1);}
+  .choice.wrong{border-color:var(--accent-red); background:rgba(226,80,61,0.1);}
+  .choice[disabled]{cursor:default;}
+
+  .feedback{margin-top:18px; padding:16px; border-radius:8px; font-size:14.5px; line-height:1.8;}
+  .feedback.ok{background:rgba(62,207,142,0.1); border:1px solid var(--accent-green);}
+  .feedback.ng{background:rgba(226,80,61,0.08); border:1px solid var(--metal-light);}
+  .feedback .code-line{margin-top:10px; font-size:13px; color:var(--text-muted);}
+  .feedback .code-digit{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:5px; background:var(--accent-green); color:var(--bg-dark);
+    font-family:'Share Tech Mono', monospace; font-weight:700; margin-left:6px;
+  }
+
+  button.primary{
+    margin-top:18px; width:100%; padding:14px; border-radius:8px; border:none;
+    background:var(--accent-yellow); color:#1a1300; font-weight:700; font-size:15px;
+    cursor:pointer; font-family:'Noto Sans JP', sans-serif;
+  }
+  button.primary:disabled{opacity:0.35; cursor:not-allowed;}
+  button.ghost{
+    margin-top:10px; width:100%; padding:12px; border-radius:8px;
+    background:transparent; border:1px solid var(--metal-light); color:var(--text-light);
+    cursor:pointer; font-size:14px; font-family:'Noto Sans JP', sans-serif;
+  }
+
+  /* ---- start / team screen ---- */
+  .start-hero{text-align:center; padding:10px 4px 4px;}
+  .start-hero .display{font-size:26px; line-height:1.4;}
+  .start-hero p{color:var(--text-muted); font-size:14px; line-height:1.8;}
+  input.team-input{
+    width:100%; padding:14px 16px; border-radius:8px; border:1px solid var(--metal-light);
+    background:var(--bg-panel-2); color:var(--text-light); font-size:15px; margin-top:14px;
+    font-family:'Noto Sans JP', sans-serif;
+  }
+  input.team-input:focus{outline:none; border-color:var(--accent-yellow);}
+
+  /* ---- final code lock ---- */
+  .code-vault{display:flex; gap:8px; justify-content:center; margin:18px 0; flex-wrap:wrap;}
+  .code-vault .slot{
+    width:34px; height:44px; border-radius:6px; background:var(--bg-panel-2);
+    border:1px solid var(--metal-light); display:flex; align-items:center; justify-content:center;
+    font-family:'Share Tech Mono', monospace; font-size:20px;
+  }
+  .code-vault .slot.filled{border-color:var(--accent-green); color:var(--accent-green);}
+
+  /* ---- recap screen ---- */
+  .recap-item{padding:14px 0; border-bottom:1px solid var(--metal);}
+  .recap-item:last-child{border-bottom:none;}
+  .recap-item .theme{font-size:12px; color:var(--accent-yellow); letter-spacing:0.08em; margin-bottom:4px;}
+  .recap-item .point{font-size:14.5px; line-height:1.7;}
+  textarea.reflect{
+    width:100%; min-height:80px; margin-top:14px; padding:12px 14px; border-radius:8px;
+    background:var(--bg-panel-2); border:1px solid var(--metal-light); color:var(--text-light);
+    font-family:'Noto Sans JP', sans-serif; font-size:14px; resize:vertical;
+  }
+  .result-summary{display:flex; gap:12px; margin:14px 0; flex-wrap:wrap;}
+  .result-summary .box{flex:1; min-width:110px; background:var(--bg-panel-2); border:1px solid var(--metal); border-radius:8px; padding:12px; text-align:center;}
+  .result-summary .box .n{font-size:22px; font-family:'Share Tech Mono', monospace; color:var(--accent-green);}
+  .result-summary .box .l{font-size:11px; color:var(--text-muted); margin-top:2px;}
+  .copy-box{
+    background:var(--bg-dark); border:1px dashed var(--metal-light); border-radius:8px;
+    padding:12px 14px; font-size:12.5px; color:var(--text-muted); white-space:pre-wrap; margin-top:10px;
+    font-family:'Share Tech Mono', monospace; line-height:1.7;
+  }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--accent-green); color:var(--bg-dark); padding:10px 20px; border-radius:20px;
+    font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  footer{padding:14px 20px; text-align:center; font-size:11px; color:var(--text-muted);}
+
+  /* ---- game over ---- */
+  .alert-flash{
+    position:fixed; inset:0; z-index:999; pointer-events:none;
+    background:var(--accent-red);
+    animation:flashAlert 0.45s ease-in-out 4;
+    opacity:0;
+  }
+  @keyframes flashAlert{
+    0%{opacity:0;} 50%{opacity:0.85;} 100%{opacity:0;}
+  }
+  .gameover-panel{
+    background:linear-gradient(180deg, #2a1414, #1c0f0f);
+    border:1px solid var(--accent-red); border-radius:14px; padding:28px 24px; text-align:center;
+  }
+  .gameover-panel .siren{
+    font-size:12px; letter-spacing:0.25em; color:var(--accent-red); margin-bottom:14px;
+  }
+  .gameover-panel h2{font-size:24px; color:#ffdcd6; margin:0 0 14px;}
+  .gameover-panel p{color:#e8b8b2; font-size:14.5px; line-height:1.8;}
+  .gameover-stripe{
+    height:10px; margin:18px 0; background:repeating-linear-gradient(135deg, var(--accent-red) 0 14px, #1c0f0f 14px 28px);
+    border-radius:4px;
+  }
+
+  @media (max-width:480px){
+    .gauge-cluster{gap:8px;}
+    .gauge{min-width:64px; padding:6px 8px;}
+    .panel{padding:18px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hazard-strip"></div>
+  <header>
+    <div class="brand">
+      <span class="eyebrow">NETZ NEWLY</span>
+      <h1 class="display" id="headerTitle">整備工場からの脱出</h1>
+    </div>
+    <div class="gauge-cluster">
+      <div class="gauge">
+        <div class="label">TEAM</div>
+        <div class="value mono" id="gaugeTeam" style="font-size:14px;">-</div>
+      </div>
+      <div class="gauge">
+        <div class="label">TIME</div>
+        <div class="value mono" id="timerValue">05:00</div>
+      </div>
+      <div class="gauge">
+        <div class="label">MISS</div>
+        <div class="value mono" id="gaugeMiss">0/3</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="bay-row" id="bayRow"></div>
+    <div id="screen"></div>
+  </main>
+  <footer>ネッツトヨタニューリー北大阪 コンプライアンス研修用ツール</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- ゲームデータ ---------------- */
+const STAGES = [
+  {
+    bay:"BAY 1｜受付", theme:"ハラスメント", difficulty:1,
+    scenario:"商談ミスが3回続いた新人に、上司が個室で「原因を自分なりに分析して報告してほしい」と30分指導した。他の人がいる場では叱っていない。",
+    q:"この指導について正しいのはどれ？",
+    choices:[
+      "業務上の適正な指導の範囲",
+      "個室で30分も指導している時点でパワハラにあたる可能性が高い"
+    ],
+    correct:0,
+    explain:"業務上の必要性があり、人格否定・威圧・見せしめを伴わない指導は、パワハラの6類型には該当しません。「みんなの前で」「人格への言及」「長時間の繰り返し」が加わると一気にアウト側へ傾きます。",
+    why:"パワハラをする上司の多くは悪意ではなく「自分が厳しく育てられた」経験の再生産です。個人の自制心に頼るより、指導の場所・時間・言葉遣いを組織としてガイドライン化しておくことが防止策になります。",
+    digit:"5",
+    recap:"適切な場所・時間・言葉で行う指導は問題ない。危ういのは「人前」「人格否定」「長時間の繰り返し」。"
+  },
+  {
+    bay:"BAY 2｜事務所", theme:"パワーハラスメント", difficulty:3,
+    scenario:"商談で大きなミスをした社員に対し、上司が始末書の提出を求め、原因と再発防止策を書かせた。始末書は上司と本人のみが確認し、他の社員には共有していない。",
+    q:"この対応について正しいのはどれ？",
+    choices:[
+      "始末書の提出を求めること自体がパワハラにあたる",
+      "再発防止目的で、公開や見せしめを伴わない範囲であれば、業務上の適正な指導の範囲"
+    ],
+    correct:1,
+    explain:"始末書の提出要求そのものは、業務上必要かつ相当な範囲であれば適正な指導の一環とされます。本人を委縮させる文言を書かせる、他の社員の前で読み上げさせる等の「見せしめ」要素が加わると、パワハラ(過大な要求・精神的攻撃)に該当し得ます。",
+    why:"「始末書=罰」という感覚から、本来問題のない指導まで一律にNGだと思い込んでしまうことがあります。逆に、内容や運用次第では適正な指導が懲罰的な見せしめに変わってしまうため、目的・範囲・共有範囲をあらかじめ明確にしておくことが重要です。",
+    digit:"8",
+    recap:"始末書や指導そのものは問題ではない。危ういのは「見せしめ」「共有範囲の逸脱」。"
+  },
+  {
+    bay:"BAY 3｜休憩室", theme:"セクシュアルハラスメント", difficulty:3,
+    scenario:"女性社員の誕生日に、男性上司が部署全員の前で「もうそんな歳なんだ、結婚は考えてるの？」と冗談っぽく声をかけた。周囲も笑っていたため、上司は「和やかな雰囲気だった」と思っている。",
+    q:"この状況について正しいのはどれ？",
+    choices:[
+      "周囲も笑っており和やかな雰囲気だったので問題ない",
+      "場が和やかに見えても、本人が不快に感じていればセクハラに該当し得る"
+    ],
+    correct:1,
+    explain:"セクシュアルハラスメントの判断は、行為者の意図や周囲の反応ではなく、相手が不快に感じたかどうかが重要な基準です。「場が和んでいたから」は行為者側の主観に過ぎず、免責の理由にはなりません。",
+    why:"「みんな笑っていたから大丈夫」という周囲の反応への依拠は、本人の沈黙を「同意」と誤解させる典型パターンです。年齢・結婚・容姿等プライベートな話題は、場が和んでいるように見えても職場の話題として扱わない、というルール化が有効です。",
+    digit:"2",
+    recap:"周囲が笑っていることは免責にならない。年齢・結婚等の話題は職場で扱わない。"
+  },
+  {
+    bay:"BAY 4｜商談ブース", theme:"景品表示法・不当表示", difficulty:3,
+    scenario:"展示車のPOPに「今だけ全車30万円引き！」と表示。実際の対象は一部在庫のみだったが、店内には対象車の一覧を用意しており、聞かれれば説明できる状態にしていた。",
+    q:"この表示について正しいのはどれ？",
+    choices:[
+      "聞かれれば説明できる準備があるので問題ない",
+      "表示そのものが実態と異なっていれば、口頭で説明できる用意があっても不当表示になり得る"
+    ],
+    correct:1,
+    explain:"景品表示法が問題にするのは「表示を見た平均的なお客様がどう受け取るか」です。POP自体が「全車」と読める以上、別途説明できる準備があっても、表示そのものの誤認riskは解消されません。表示は実態と一致させる必要があります。",
+    why:"「後から説明できるから大丈夫」はKPI(集客)の焦りが生む典型的な言い訳です。出稿前に表示内容と実際の対象条件が一致しているか、公開前チェックの仕組みを設けることが根本対策になります。",
+    digit:"1",
+    recap:"「聞かれれば説明できる」は言い訳にならない。表示そのものを実態と一致させる。"
+  },
+  {
+    bay:"BAY 5｜整備工場(見積作成)", theme:"IT・生成AI利用", difficulty:3,
+    scenario:"新人スタッフが、お客様との商談メモや車検の見積り内容をそのまま無料の外部生成AIツールに貼り付け、案内文の下書きを作らせようとしている。「効率化のためだから」と本人は良かれと思っている。",
+    q:"この対応について正しいのはどれ？",
+    choices:[
+      "業務効率化が目的なら問題ない",
+      "お客様の情報を外部の無料AIツールに入力すること自体にリスクがある"
+    ],
+    correct:1,
+    explain:"無料の外部生成AIツールは、入力内容が学習データに使われたり、想定外の形で保存・流出したりするリスクがあります。お客様の氏名・車両情報・商談内容などを許可なく入力すること自体が情報漏洩リスクになります。",
+    why:"動機は「早く終わらせたい」という善意であることがほとんどです。禁止するだけでは目の届かない場所で使われ続けます。会社として安全な(学習に使われない)法人契約のAI環境を用意し、「安全に使わせる」方向で対応するのが実効性のある対策です。",
+    digit:"6",
+    recap:"お客様情報を無料の外部AIツールにそのまま入力しない。会社が用意した環境を使う。"
+  },
+  {
+    bay:"BAY 6｜事務所(勤怠管理)", theme:"労働時間", difficulty:2,
+    scenario:"月末で業務が立て込み実際は20時まで働いたが、先輩から「打刻は定時の18時のままで」と言われ、本人も「多少のサービス残業は仕方ない」と納得していた。",
+    q:"この対応について正しいのはどれ？",
+    choices:[
+      "本人も納得しているので問題ない",
+      "本人が納得していても、実労働時間と異なる打刻は労働基準法上問題になる"
+    ],
+    correct:1,
+    explain:"実労働時間と異なる打刻を行わせることは、賃金未払い(サービス残業)につながり、本人の同意の有無に関わらず労働基準法に抵触するおそれがあります。実労働時間はそのまま正確に記録することが原則です。",
+    why:"「迷惑をかけたくない」「評価を下げたくない」という本人の気遣いが、問題を見えなくします。個人の納得を理由にせず、申告することが不利にならない運用と、業務量そのものの見直しが必要です。",
+    digit:"9",
+    recap:"本人の「納得」は免罪符にならない。実労働時間は正確に記録する。"
+  },
+  {
+    bay:"BAY 7｜保険窓口", theme:"保険業法", difficulty:3,
+    scenario:"自動車保険の乗り合い代理店として契約更新の勧誘をする際、「今回だけ特別に、洗車チケットをお付けするので当社で契約してください」と伝えた。担当者は「ちょっとしたサービスのつもり」だった。",
+    q:"この対応について正しいのはどれ？",
+    choices:[
+      "ちょっとしたサービスなので問題ない",
+      "契約締結・勧誘に際して特別の利益の提供を約束する行為は、保険業法で禁止されている可能性がある"
+    ],
+    correct:1,
+    explain:"保険業法では、保険契約者や被保険者に対して保険料の割引・割戻しその他特別の利益の提供を約束する行為(特別利益の提供)を禁止しています。景品程度のつもりでも、契約を条件とした利益提供は該当し得るため、自己判断で約束しないことが重要です。",
+    why:"契約件数のノルマに追われるほど「これくらいなら」の感覚が緩みやすくなります。個人の自制心に頼らず、キャンペーン・特典は必ず事前に社内規定・コンプライアンス部門の確認を通すルールにしておくことが防止策になります。",
+    digit:"4",
+    recap:"契約を条件にした景品・特典の提供の約束は、金額の大小に関わらず自己判断せず事前に確認する。"
+  },
+  {
+    bay:"BAY 8｜企画会議室", theme:"景品表示法(景品類の提供制限)", difficulty:3,
+    scenario:"新車購入者全員に、もれなく10万円相当の家電をプレゼントするキャンペーンを企画している。車両価格は300万円程度で、担当者は「価格に対して十分見合っているから大丈夫」と考えている。",
+    q:"この企画について正しいのはどれ？",
+    choices:[
+      "車両価格に対して見合った金額なので問題ない",
+      "「見合っていそう」という感覚だけで進めず、景品表示法上の上限額を確認する必要がある"
+    ],
+    correct:1,
+    explain:"購入者全員に提供する「総付景品」には、取引価額に応じた上限額が景品表示法で定められています。感覚的に「見合っていそう」でも、実際の上限計算をせずに企画を進めると規制に抵触するおそれがあります。",
+    why:"「お客様に喜んでほしい」「他社もやっている」という善意や競争心が、景品規制の存在そのものを見落とす動機になりがちです。販促企画は必ず事前に景品規制の該当有無を確認するフローを社内で用意しておくことが有効です。",
+    digit:"7",
+    recap:"景品・プレゼント企画は「見合っていそう」で進めず、必ず事前に上限額を確認する。"
+  },
+  {
+    bay:"BAY 9｜整備工場", theme:"モラルハラスメント", difficulty:3,
+    scenario:"ある社員が特定の同僚に対し、業務連絡は必要最低限だけ行い、雑談や情報共有の場には一切誘わない対応を数か月続けている。本人は「暴言を吐いたわけでもないし、業務上は問題ない」と話している。",
+    q:"この対応について正しいのはどれ？",
+    choices:[
+      "暴言や指示違反がなければモラハラには当たらない",
+      "意図的な無視・情報共有からの排除が継続すれば、暴言がなくてもモラハラに該当し得る"
+    ],
+    correct:1,
+    explain:"モラルハラスメントは、暴言のような分かりやすい攻撃だけでなく、無視・仲間外れ・必要な情報を意図的に共有しない等の「人間関係からの切り離し」も典型的な類型です。継続性・意図性があれば、直接的な暴言がなくても該当し得ます。",
+    why:"「何も言っていないから自分は悪くない」という感覚は、モラハラの行為者側に典型的に見られるものです。指導や注意ではなく「無視」という形で不満を示す空気がある場合、1on1や相談窓口を通じて早期に可視化する仕組みが必要です。",
+    digit:"3",
+    recap:"暴言がなくても、意図的な無視・排除の継続はモラハラになり得る。"
+  },
+  {
+    bay:"BAY 10｜出口ロビー", theme:"私生活・SNS", difficulty:1,
+    scenario:"あるスタッフが個人のSNSで、勤務先の店舗名は出さずに「今日の接客最悪だった」と愚痴を投稿した。「店名を出していないから大丈夫」と思っている。",
+    q:"この投稿について正しいのはどれ？",
+    choices:[
+      "店名を出していないので問題ない",
+      "店名を出していなくても、投稿内容から特定され会社の信用を損なうリスクがある"
+    ],
+    correct:1,
+    explain:"店名を伏せていても、勤務地・時間帯・写真・過去の投稿などから個人や店舗が特定されるケースは珍しくありません。特定された場合、お客様への評価や会社の信用に直結します。",
+    why:"飲酒運転や匿名の愚痴も、社内に安全な発散先がないことと地続きです。禁止するだけでなく、1on1や相談窓口など「社内で吐き出せる場」を用意することが根本的な対策になります。",
+    digit:"0",
+    recap:"「店名を出していない」は安全ではない。社内の相談窓口など、発散先を社内に持つ。"
+  }
+];
+const TOTAL_SECONDS = 5*60;
+// ▼Googleフォーム連携用の設定(下記の「Googleフォーム連携_設定手順.md」の手順で作成後、ここに貼り付ける)
+// 認証不要でスプレッドシートに結果が集まる方式です。
+const GOOGLE_FORM_CONFIG = {
+  actionUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeZhkITEzsWkP5EetT6tIMZTPtB__SYyC0sr5NbfJd0rFMiog/formResponse",
+  entryTeamName: "entry.698826240",
+  entryElapsed: "entry.2070573307",
+  entryCode: "entry.1774794188",
+  entryReflect: "entry.752780054"
+};
+
+/* ---------------- 状態 ---------------- */
+const MAX_MISS = 3;
+let state = {
+  teamName:"",
+  stageIndex:0,
+  answered:new Array(STAGES.length).fill(false),
+  bayResult:new Array(STAGES.length).fill(null), // null | 'ok' | 'ng'
+  code:new Array(STAGES.length).fill(""),
+  wrongCount:0,
+  timerId:null,
+  secondsLeft:TOTAL_SECONDS,
+  startedAt:null,
+  finishedAt:null
+};
+
+const screen = document.getElementById('screen');
+const bayRow = document.getElementById('bayRow');
+const gaugeTeam = document.getElementById('gaugeTeam');
+const timerValue = document.getElementById('timerValue');
+const gaugeMiss = document.getElementById('gaugeMiss');
+const headerTitle = document.getElementById('headerTitle');
+
+function renderBayRow(){
+  bayRow.innerHTML = STAGES.map((s,i)=>{
+    let cls = 'bay';
+    if(state.bayResult[i]==='ok') cls += ' done';
+    else if(state.bayResult[i]==='ng') cls += ' failed';
+    else if(i===state.stageIndex) cls += ' current';
+    return `<div class="${cls}"><div class="shutter"></div><div class="num">${i+1}</div></div>`;
+  }).join('');
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60).toString().padStart(2,'0');
+  const s = Math.floor(sec%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+function startTimer(){
+  state.startedAt = Date.now();
+  state.timerId = setInterval(()=>{
+    state.secondsLeft--;
+    if(state.secondsLeft<=0){
+      state.secondsLeft = 0;
+      clearInterval(state.timerId);
+    }
+    timerValue.textContent = fmtTime(state.secondsLeft);
+    if(state.secondsLeft <= 180) timerValue.classList.add('warn');
+  },1000);
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------------- 画面: スタート ---------------- */
+function renderStart(){
+  headerTitle.textContent = "整備工場からの脱出";
+  bayRow.style.display = 'none';
+  screen.innerHTML = `
+    <div class="panel">
+      <div class="start-hero">
+        <div class="display" style="font-size:13px; color:var(--accent-yellow); letter-spacing:0.15em; margin-bottom:10px;">MISSION BRIEFING</div>
+        <div class="display" style="font-size:24px; line-height:1.5;">ある日突然、整備工場の<br>全シャッターが下りた。</div>
+        <p>原因は10個の「コンプライアンス違反の芽」。<br>
+        グレーゾーンの2択、正しい判断を選んでシャッターを開けろ。<br>
+        10個のコードを集めて、脱出せよ。<br>
+        <span style="color:var(--accent-red);">ただし、判断ミスが3回に達した時点でミッション失敗となる。</span></p>
+      </div>
+      <input class="team-input" id="teamInput" placeholder="チーム名・店舗名を入力(例: 豊中店Aチーム)" maxlength="30">
+      <button class="primary" id="startBtn" disabled>ミッション開始 / シャッターが閉まる前に</button>
+    </div>
+  `;
+  const input = document.getElementById('teamInput');
+  const btn = document.getElementById('startBtn');
+  input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().length===0; });
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter' && !btn.disabled) btn.click(); });
+  btn.addEventListener('click', ()=>{
+    state.teamName = input.value.trim();
+    gaugeTeam.textContent = state.teamName;
+    bayRow.style.display = 'flex';
+    renderBayRow();
+    startTimer();
+    renderStage(0);
+  });
+}
+
+/* ---------------- 画面: ステージ ---------------- */
+function renderStage(i){
+  state.stageIndex = i;
+  renderBayRow();
+  const s = STAGES[i];
+  headerTitle.textContent = s.bay;
+  screen.innerHTML = `
+    <div class="panel">
+      <div class="bay-tag"><span class="dot"></span>${s.theme}<span style="margin-left:auto; color:var(--text-muted); letter-spacing:0;">難易度 ${'●'.repeat(s.difficulty)}${'○'.repeat(3-s.difficulty)}</span></div>
+      <h2>ロックを解除せよ</h2>
+      <div class="scenario">${s.scenario}</div>
+      <div style="font-weight:700; margin-bottom:10px; font-size:15px;">${s.q}</div>
+      <div class="choices" id="choicesWrap">
+        ${s.choices.map((c,ci)=>`<button class="choice" data-i="${ci}"><span class="letter">${String.fromCharCode(65+ci)}</span><span>${c}</span></button>`).join('')}
+      </div>
+      <div id="feedbackWrap"></div>
+    </div>
+  `;
+  document.querySelectorAll('#choicesWrap .choice').forEach(btn=>{
+    btn.addEventListener('click', ()=>handleAnswer(i, parseInt(btn.dataset.i)));
+  });
+}
+
+function handleAnswer(stageIdx, choiceIdx){
+  const s = STAGES[stageIdx];
+  const buttons = document.querySelectorAll('#choicesWrap .choice');
+  buttons.forEach(b=>b.setAttribute('disabled','true'));
+  const isCorrect = choiceIdx === s.correct;
+  buttons[choiceIdx].classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){ buttons[s.correct].classList.add('correct'); }
+
+  state.answered[stageIdx] = true;
+  if(isCorrect){
+    state.bayResult[stageIdx] = 'ok';
+    state.code[stageIdx] = s.digit;
+    playCorrectSound();
+  } else {
+    state.bayResult[stageIdx] = 'ng';
+    state.wrongCount++;
+    gaugeMiss.textContent = `${state.wrongCount}/${MAX_MISS}`;
+    if(state.wrongCount < MAX_MISS){ playWrongSound(); }
+  }
+  renderBayRow();
+
+  if(state.wrongCount >= MAX_MISS){
+    triggerGameOver();
+    return;
+  }
+
+  if(!isCorrect){
+    flashScreen(1); // 間違うたびに1回、画面を赤く明滅させる
+  }
+
+  const fb = document.getElementById('feedbackWrap');
+  fb.innerHTML = `
+    <div class="feedback ${isCorrect ? 'ok' : 'ng'}">
+      <div><strong>${isCorrect ? '✔ シャッター解除' : '✕ シャッターは開かなかった'}</strong>：${s.explain}</div>
+      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--metal);">
+        <strong style="color:var(--accent-yellow);">なぜ流されるのか(性弱説の視点)</strong>：${s.why}
+      </div>
+      ${isCorrect ? `<div class="code-line">獲得コード：<span class="code-digit">${s.digit}</span></div>` : `<div class="code-line" style="color:var(--accent-red);">このベイのコードは獲得できなかった</div>`}
+    </div>
+  `;
+
+  const btnLabel = stageIdx < STAGES.length-1 ? '次の整備ベイへ' : '最終ゲートへ';
+  fb.innerHTML += `<button class="primary" id="nextBtn">${btnLabel}</button>`;
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    if(stageIdx < STAGES.length-1){ renderStage(stageIdx+1); }
+    else { renderVault(); }
+  });
+}
+
+/* ---------------- 画面フラッシュ・サイレン・SE ---------------- */
+function playCorrectSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    // ピンポン(正解チャイム): 高い音→低い音
+    [880, 659.25].forEach((freq,i)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain); gain.connect(ctx.destination);
+      const t0 = now + i*0.16;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.3, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.3);
+      osc.start(t0);
+      osc.stop(t0+0.32);
+    });
+  }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+function playWrongSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 220;
+    osc.connect(gain); gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.25, now+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+0.28);
+    osc.start(now);
+    osc.stop(now+0.3);
+  }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+function flashScreen(times, withSiren){
+  const flash = document.createElement('div');
+  flash.className = 'alert-flash';
+  flash.style.animation = `flashAlert 0.45s ease-in-out ${times}`;
+  document.body.appendChild(flash);
+  if(withSiren) playSiren();
+  const totalMs = times*450 + 150;
+  return new Promise(resolve=>{
+    setTimeout(()=>{ flash.remove(); resolve(); }, totalMs);
+  });
+}
+
+function playSiren(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const duration = 1.8;
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.05);
+    for(let i=0;i<4;i++){
+      const t0 = now + i*0.45;
+      osc.frequency.setValueAtTime(600, t0);
+      osc.frequency.linearRampToValueAtTime(920, t0+0.22);
+      osc.frequency.linearRampToValueAtTime(600, t0+0.45);
+    }
+    gain.gain.setValueAtTime(0.22, now+duration-0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, now+duration);
+    osc.start(now);
+    osc.stop(now+duration);
+  }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+/* ---------------- 画面: ゲームオーバー ---------------- */
+function triggerGameOver(){
+  clearInterval(state.timerId);
+  flashScreen(4, true).then(renderGameOver);
+}
+
+function renderGameOver(){
+  headerTitle.textContent = "ミッション失敗";
+  screen.innerHTML = `
+    <div class="gameover-panel">
+      <div class="siren">⚠ WARNING ⚠ WARNING ⚠</div>
+      <h2>整備工場は封鎖された</h2>
+      <div class="gameover-stripe"></div>
+      <p>
+        判断ミスが${MAX_MISS}回に達し、警備システムが作動。<br>
+        シャッターは開かず、脱出はここで途絶えた。
+      </p>
+      <p style="margin-top:14px;">
+        チーム名：${state.teamName}<br>
+        突破ベイ数：${state.bayResult.filter(r=>r==='ok').length} / ${STAGES.length}
+      </p>
+      <button class="primary" id="retryBtn" style="margin-top:20px;">最初からやり直す</button>
+    </div>
+  `;
+  document.getElementById('retryBtn').addEventListener('click', resetGame);
+}
+
+function resetGame(){
+  state = {
+    teamName:"",
+    stageIndex:0,
+    answered:new Array(STAGES.length).fill(false),
+    bayResult:new Array(STAGES.length).fill(null),
+    code:new Array(STAGES.length).fill(""),
+    wrongCount:0,
+    timerId:null,
+    secondsLeft:TOTAL_SECONDS,
+    startedAt:null,
+    finishedAt:null
+  };
+  gaugeMiss.textContent = `0/${MAX_MISS}`;
+  timerValue.textContent = fmtTime(TOTAL_SECONDS);
+  timerValue.classList.remove('warn');
+  gaugeTeam.textContent = '-';
+  renderStart();
+}
+
+/* ---------------- 画面: 最終ゲート ---------------- */
+function renderVault(){
+  headerTitle.textContent = "最終ゲート";
+  const failedCount = state.bayResult.filter(r=>r==='ng').length;
+  screen.innerHTML = `
+    <div class="panel" style="text-align:center;">
+      <div class="bay-tag" style="justify-content:center;"><span class="dot"></span>${failedCount===0 ? 'ALL BAYS CLEARED' : 'MISSION SURVIVED'}</div>
+      <h2>${failedCount===0 ? '脱出コードが完成した' : '脱出コードは一部欠けたまま完成した'}</h2>
+      <div class="code-vault">
+        ${state.code.map((d,i)=> d ? `<div class="slot filled">${d}</div>` : `<div class="slot" style="border-color:var(--accent-red); color:var(--accent-red);">×</div>`).join('')}
+      </div>
+      <button class="primary" id="escapeBtn">ゲートを開けて脱出する</button>
+    </div>
+  `;
+  document.getElementById('escapeBtn').addEventListener('click', renderResult);
+}
+
+/* ---------------- 画面: 結果・振り返り ---------------- */
+function renderResult(){
+  clearInterval(state.timerId);
+  state.finishedAt = Date.now();
+  const elapsed = TOTAL_SECONDS - state.secondsLeft;
+  headerTitle.textContent = "脱出成功";
+  screen.innerHTML = `
+    <div class="panel">
+      <div class="bay-tag"><span class="dot"></span>MISSION COMPLETE</div>
+      <h2>脱出成功。お疲れ様でした。</h2>
+      <div class="result-summary">
+        <div class="box"><div class="n">${fmtTime(elapsed)}</div><div class="l">かかった時間</div></div>
+        <div class="box"><div class="n">${STAGES.length}/${STAGES.length}</div><div class="l">突破ベイ数</div></div>
+        <div class="box"><div class="n mono">${state.code.join('')}</div><div class="l">脱出コード</div></div>
+      </div>
+
+      <h2 style="margin-top:24px;">振り返り：今日の10のポイント</h2>
+      ${STAGES.map(s=>`
+        <div class="recap-item">
+          <div class="theme">${s.theme}</div>
+          <div class="point">${s.recap}</div>
+        </div>
+      `).join('')}
+
+      <div style="margin-top:20px;">
+        <div style="font-weight:700; font-size:14.5px;">チームで話してみよう</div>
+        <p style="color:var(--text-muted); font-size:13.5px; line-height:1.8; margin-top:6px;">
+          この10個の場面のうち、自分の店舗・持ち場で実際に起こりそうなものはどれですか？<br>
+          気づいたこと・チームの意見をメモしておきましょう。
+        </p>
+        <textarea class="reflect" id="reflectInput" placeholder="例：ベイ6の打刻の話、うちの店舗でもありそう…"></textarea>
+      </div>
+
+      <button class="primary" id="sheetBtn">結果をスプレッドシートに送信</button>
+      <div id="sheetStatus" style="font-size:12.5px; color:var(--text-muted); margin-top:8px; text-align:center;"></div>
+
+      <button class="ghost" id="copyBtn">結果をテキストでコピー(店舗報告用)</button>
+      <div class="copy-box" id="copyPreview"></div>
+    </div>
+  `;
+
+  const updatePreview = ()=>{
+    const reflect = document.getElementById('reflectInput').value.trim();
+    const text =
+`【コンプラ脱出ゲーム 結果】
+チーム名：${state.teamName}
+クリアタイム：${fmtTime(elapsed)}
+脱出コード：${state.code.join('')}
+振り返りメモ：${reflect || '(未記入)'}`;
+    document.getElementById('copyPreview').textContent = text;
+    return text;
+  };
+  document.getElementById('reflectInput').addEventListener('input', updatePreview);
+  updatePreview();
+
+  document.getElementById('sheetBtn').addEventListener('click', ()=>{
+    const statusEl = document.getElementById('sheetStatus');
+    if(!GOOGLE_FORM_CONFIG.actionUrl){
+      statusEl.textContent = 'スプレッドシート連携が未設定です(担当者にご確認ください)。下の「テキストでコピー」をご利用ください。';
+      return;
+    }
+    const reflect = document.getElementById('reflectInput').value.trim();
+    statusEl.textContent = '送信中…';
+
+    // 隠しiframe + フォームPOSTでGoogleフォームへ送信(fetchのCORS制限を受けにくい方式)
+    let iframe = document.getElementById('gformTargetFrame');
+    if(!iframe){
+      iframe = document.createElement('iframe');
+      iframe.id = 'gformTargetFrame';
+      iframe.name = 'gformTargetFrame';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+    }
+    const form = document.createElement('form');
+    form.action = GOOGLE_FORM_CONFIG.actionUrl;
+    form.method = 'POST';
+    form.target = 'gformTargetFrame';
+
+    const fields = {
+      [GOOGLE_FORM_CONFIG.entryTeamName]: state.teamName,
+      [GOOGLE_FORM_CONFIG.entryElapsed]: fmtTime(elapsed),
+      [GOOGLE_FORM_CONFIG.entryCode]: state.code.join(''),
+      [GOOGLE_FORM_CONFIG.entryReflect]: reflect
+    };
+    Object.keys(fields).forEach(name=>{
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = fields[name];
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    // 隠しiframeの読み込み完了を送信完了の目安として表示(内容までは確認できません)
+    iframe.onload = ()=>{
+      statusEl.textContent = '送信しました(スプレッドシート側でご確認ください)';
+      showToast('送信しました');
+    };
+    setTimeout(()=>{
+      if(statusEl.textContent === '送信中…'){
+        statusEl.textContent = '送信しました(スプレッドシート側でご確認ください)';
+      }
+    }, 3000);
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', ()=>{
+    const text = updatePreview();
+    navigator.clipboard.writeText(text).then(()=>{
+      showToast('コピーしました');
+    }).catch(()=>{
+      showToast('コピーできませんでした。手動で選択してください');
+    });
+  });
+}
+
+/* ---------------- 起動 ---------------- */
+renderStart();
+</script>
+</body>
+</html>
