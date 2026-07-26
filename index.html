@@ -208,6 +208,21 @@
     0%{transform:translateY(-20px) rotate(0deg); opacity:1;}
     100%{transform:translateY(110vh) rotate(720deg); opacity:0.9;}
   }
+
+  /* ---- door open motion ---- */
+  .door-overlay{
+    position:absolute; inset:0; z-index:50; display:flex;
+    pointer-events:none; border-radius:14px; overflow:hidden;
+  }
+  .door-half{
+    flex:1; background:repeating-linear-gradient(0deg, var(--metal) 0 6px, var(--metal-light) 6px 11px);
+    transition:transform 0.65s cubic-bezier(.4,1.4,.4,1);
+    box-shadow:0 0 24px rgba(62,207,142,0.5) inset;
+  }
+  .door-left{ border-right:2px solid var(--accent-green); }
+  .door-right{ border-left:2px solid var(--accent-green); }
+  .door-overlay.open .door-left{ transform:translateX(-100%); }
+  .door-overlay.open .door-right{ transform:translateX(100%); }
   .gameover-panel{
     background:linear-gradient(180deg, #2a1414, #1c0f0f);
     border:1px solid var(--accent-red); border-radius:14px; padding:28px 24px; text-align:center;
@@ -293,32 +308,32 @@ const STAGES = [
     recap:"始末書や指導そのものは問題ではない。危ういのは「見せしめ」「共有範囲の逸脱」。"
   },
   {
-    bay:"BAY 3｜休憩室", theme:"セクシュアルハラスメント", difficulty:3,
-    scenario:"女性社員の誕生日に、男性上司が部署全員の前で「もうそんな歳なんだ、結婚は考えてるの？」と冗談っぽく声をかけた。周囲も笑っていたため、上司は「和やかな雰囲気だった」と思っている。",
-    q:"この状況について正しいのはどれ？",
+    bay:"BAY 3｜Web会議ブース", theme:"リモートハラスメント", difficulty:2,
+    scenario:"リモート会議で新人のカメラがずっとOFFになっている。上司は「顔を見て話したいから、カメラをONにしてほしい」と頼んだ。",
+    q:"この対応について正しいのはどれ？",
     choices:[
-      "周囲も笑っており和やかな雰囲気だったので問題ない",
-      "場が和やかに見えても、本人が不快に感じていればセクハラに該当し得る"
+      "業務上の合理的な要請の範囲",
+      "常にリモートハラスメントにあたる"
     ],
-    correct:1,
-    explain:"セクシュアルハラスメントの判断は、行為者の意図や周囲の反応ではなく、相手が不快に感じたかどうかが重要な基準です。「場が和んでいたから」は行為者側の主観に過ぎず、免責の理由にはなりません。",
-    why:"「みんな笑っていたから大丈夫」という周囲の反応への依拠は、本人の沈黙を「同意」と誤解させる典型パターンです。年齢・結婚・容姿等プライベートな話題は、場が和んでいるように見えても職場の話題として扱わない、というルール化が有効です。",
+    correct:0,
+    explain:"原則は業務上の合理的な要請です。ただし、住環境などの事情への配慮なく執拗に迫れば、リモートハラスメントに傾きます。会社としてカメラのON/OFFに関するポリシーをあらかじめ決めておくことが本質的な解決になります。",
+    why:"「見えない不安」が、過剰な監視要求に化けてしまうことがあります。ルールが不在のまま各管理職の感覚に判断を委ねると、同じ会社の中でも扱いに天国と地獄が生まれます。",
     digit:"2",
-    recap:"周囲が笑っていることは免責にならない。年齢・結婚等の話題は職場で扱わない。"
+    recap:"カメラON要請自体は合理的な範囲。ただし執拗な要求は逆効果。会社としてカメラポリシーを決めておく。"
   },
   {
-    bay:"BAY 4｜商談ブース", theme:"景品表示法・不当表示", difficulty:3,
-    scenario:"展示車のPOPに「今だけ全車30万円引き！」と表示。実際の対象は一部在庫のみだったが、店内には対象車の一覧を用意しており、聞かれれば説明できる状態にしていた。",
-    q:"この表示について正しいのはどれ？",
+    bay:"BAY 4｜バックヤード", theme:"シャドーIT・情報管理", difficulty:3,
+    scenario:"会社公認のチャットツールが使いにくいので、チームだけLINEグループで業務連絡をしている。",
+    q:"この対応について正しいのはどれ？",
     choices:[
-      "聞かれれば説明できる準備があるので問題ない",
-      "表示そのものが実態と異なっていれば、口頭で説明できる用意があっても不当表示になり得る"
+      "緊急性のある場合などを考え、連絡が早くなるなら大丈夫",
+      "会社が管理できない場での業務連絡はNG"
     ],
     correct:1,
-    explain:"景品表示法が問題にするのは「表示を見た平均的なお客様がどう受け取るか」です。POP自体が「全車」と読める以上、別途説明できる準備があっても、表示そのものの誤認riskは解消されません。表示は実態と一致させる必要があります。",
-    why:"「後から説明できるから大丈夫」はKPI(集客)の焦りが生む典型的な言い訳です。出稿前に表示内容と実際の対象条件が一致しているか、公開前チェックの仕組みを設けることが根本対策になります。",
+    explain:"情報漏えいが起きても会社が検知・対応できません。私物端末の紛失、誤送信、退職者がグループに残り続ける等、リスクが管理の外に出てしまいます。",
+    why:"動機は「仕事を早くしたい」という善意です。公式ツールの使い勝手を放置して禁止だけしても地下に潜ります。改善要望の窓口とセットで初めて機能します。",
     digit:"1",
-    recap:"「聞かれれば説明できる」は言い訳にならない。表示そのものを実態と一致させる。"
+    recap:"公式ツールの使いにくさは、私的なツール利用ではなく改善要望として上げる。会社が管理できない場での業務連絡はNG。"
   },
   {
     bay:"BAY 5｜整備工場(見積作成)", theme:"IT・生成AI利用", difficulty:3,
@@ -546,6 +561,7 @@ function handleAnswer(stageIdx, choiceIdx){
     state.bayResult[stageIdx] = 'ok';
     state.code[stageIdx] = s.digit;
     playCorrectSound();
+    playDoorOpenAnimation();
   } else {
     state.bayResult[stageIdx] = 'ng';
     state.wrongCount++;
@@ -705,6 +721,21 @@ function launchConfetti(){
     container.appendChild(el);
   }
   setTimeout(()=>{ container.remove(); }, 4600);
+}
+
+function playDoorOpenAnimation(){
+  const panel = screen.querySelector('.panel');
+  if(!panel) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'door-overlay';
+  overlay.innerHTML = `<div class="door-half door-left"></div><div class="door-half door-right"></div>`;
+  panel.appendChild(overlay);
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      overlay.classList.add('open');
+    });
+  });
+  setTimeout(()=>{ overlay.remove(); }, 800);
 }
 
 function flashScreen(times, withSiren){
