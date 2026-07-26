@@ -198,6 +198,16 @@
   @keyframes flashAlert{
     0%{opacity:0;} 50%{opacity:0.85;} 100%{opacity:0;}
   }
+
+  /* ---- confetti ---- */
+  .confetti-piece{
+    position:absolute; top:-20px; opacity:0.95; border-radius:1px;
+    animation-name:confettiFall; animation-timing-function:linear; animation-fill-mode:forwards;
+  }
+  @keyframes confettiFall{
+    0%{transform:translateY(-20px) rotate(0deg); opacity:1;}
+    100%{transform:translateY(110vh) rotate(720deg); opacity:0.9;}
+  }
   .gameover-panel{
     background:linear-gradient(180deg, #2a1414, #1c0f0f);
     border:1px solid var(--accent-red); border-radius:14px; padding:28px 24px; text-align:center;
@@ -234,7 +244,7 @@
       </div>
       <div class="gauge">
         <div class="label">TIME</div>
-        <div class="value mono" id="timerValue">05:00</div>
+        <div class="value mono" id="timerValue">10:00</div>
       </div>
       <div class="gauge">
         <div class="label">MISS</div>
@@ -395,7 +405,7 @@ const STAGES = [
     recap:"「店名を出していない」は安全ではない。社内の相談窓口など、発散先を社内に持つ。"
   }
 ];
-const TOTAL_SECONDS = 5*60;
+const TOTAL_SECONDS = 10*60;
 // ▼Googleフォーム連携用の設定(下記の「Googleフォーム連携_設定手順.md」の手順で作成後、ここに貼り付ける)
 // 認証不要でスプレッドシートに結果が集まる方式です。
 const GOOGLE_FORM_CONFIG = {
@@ -465,7 +475,7 @@ function showToast(msg){
 }
 
 /* ---------------- 画面: スタート ---------------- */
-function renderStart(speak){
+function renderStart(){
   headerTitle.textContent = "整備工場からの脱出";
   bayRow.style.display = 'none';
   screen.innerHTML = `
@@ -477,12 +487,13 @@ function renderStart(speak){
         グレーゾーンの2択、正しい判断を選んでシャッターを開けろ。<br>
         10個のコードを集めて、脱出せよ。<br>
         <span style="color:var(--accent-red);">ただし、判断ミスが3回に達した時点でミッション失敗となる。</span></p>
+        <button class="ghost" id="speakBtn" style="margin-top:12px;">🔊 読み上げ再生</button>
       </div>
       <input class="team-input" id="teamInput" placeholder="チーム名・店舗名を入力(例: 豊中店Aチーム)" maxlength="30">
       <button class="primary" id="startBtn" disabled>ミッション開始 / シャッターが閉まる前に</button>
     </div>
   `;
-  if(speak){ speakBriefing(); }
+  document.getElementById('speakBtn').addEventListener('click', speakBriefing);
   const input = document.getElementById('teamInput');
   const btn = document.getElementById('startBtn');
   input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().length===0; });
@@ -509,12 +520,14 @@ function renderStage(i){
       <h2>ロックを解除せよ</h2>
       <div class="scenario">${s.scenario}</div>
       <div style="font-weight:700; margin-bottom:10px; font-size:15px;">${s.q}</div>
+      <button class="ghost" id="speakQBtn" style="margin-bottom:14px;">🔊 問いを読み上げる</button>
       <div class="choices" id="choicesWrap">
         ${s.choices.map((c,ci)=>`<button class="choice" data-i="${ci}"><span class="letter">${String.fromCharCode(65+ci)}</span><span>${c}</span></button>`).join('')}
       </div>
       <div id="feedbackWrap"></div>
     </div>
   `;
+  document.getElementById('speakQBtn').addEventListener('click', ()=>speakQuestion(i));
   document.querySelectorAll('#choicesWrap .choice').forEach(btn=>{
     btn.addEventListener('click', ()=>handleAnswer(i, parseInt(btn.dataset.i)));
   });
@@ -553,7 +566,7 @@ function handleAnswer(stageIdx, choiceIdx){
   const fb = document.getElementById('feedbackWrap');
   fb.innerHTML = `
     <div class="feedback ${isCorrect ? 'ok' : 'ng'}">
-      <div><strong>${isCorrect ? '✔ シャッター解除' : '✕ シャッターは開かなかった'}</strong>：${s.explain}</div>
+      <div><strong style="${isCorrect ? '' : 'color:var(--accent-red);'}">${isCorrect ? '✔ シャッター解除' : '✕ シャッターは開かなかった'}</strong>：${s.explain}</div>
       <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--metal);">
         <strong style="color:var(--accent-yellow);">なぜ流されるのか(性弱説の視点)</strong>：${s.why}
       </div>
@@ -570,17 +583,27 @@ function handleAnswer(stageIdx, choiceIdx){
 }
 
 /* ---------------- 画面フラッシュ・サイレン・SE ---------------- */
-function speakBriefing(){
+function speakText(text, rate){
   try{
     if(!('speechSynthesis' in window)) return;
-    const text = "原因は10個のコンプライアンス違反の芽、グレーゾーンの2択、正しい判断を選んでシャッターを開けろ。10個のコードを集めて、脱出せよ。";
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'ja-JP';
-    utter.rate = 1.4;
+    utter.rate = rate;
     utter.pitch = 1.0;
     speechSynthesis.cancel();
     speechSynthesis.speak(utter);
   }catch(e){ /* 読み上げに対応していない環境では無視 */ }
+}
+
+function speakBriefing(){
+  const text = "原因は10個のコンプライアンス違反の芽、グレーゾーンの2択、正しい判断を選んでシャッターを開けろ。10個のコードを集めて、脱出せよ。";
+  speakText(text, 2.0);
+}
+
+function speakQuestion(stageIdx){
+  const s = STAGES[stageIdx];
+  const text = s.scenario + "。" + s.q;
+  speakText(text, 1.5);
 }
 
 function playCorrectSound(){
@@ -619,6 +642,69 @@ function playWrongSound(){
     osc.start(now);
     osc.stop(now+0.3);
   }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+function playFanfare(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5-E5-G5-C6の上昇フレーズ
+    notes.forEach((freq,i)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      osc.connect(gain); gain.connect(ctx.destination);
+      const t0 = now + i*0.15;
+      const dur = 0.18;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.3, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+      osc.start(t0);
+      osc.stop(t0+dur+0.05);
+    });
+    // 最後にホールドする和音
+    const chordAt = now + notes.length*0.15;
+    [783.99, 1046.5, 1318.5].forEach(freq=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      osc.connect(gain); gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.0001, chordAt);
+      gain.gain.exponentialRampToValueAtTime(0.25, chordAt+0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, chordAt+0.8);
+      osc.start(chordAt);
+      osc.stop(chordAt+0.85);
+    });
+  }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+function launchConfetti(){
+  const colors = ['#f5a623','#3ecf8e','#e2503d','#8ab6ff','#f4f1ea'];
+  const container = document.createElement('div');
+  container.id = 'confettiContainer';
+  container.style.position = 'fixed';
+  container.style.inset = '0';
+  container.style.zIndex = '998';
+  container.style.pointerEvents = 'none';
+  container.style.overflow = 'hidden';
+  document.body.appendChild(container);
+
+  const count = 90;
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = (Math.random()*100)+'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.width = (6+Math.random()*6)+'px';
+    el.style.height = (10+Math.random()*8)+'px';
+    const duration = 2.6 + Math.random()*1.6;
+    el.style.animationDuration = duration+'s';
+    el.style.animationDelay = (Math.random()*0.5)+'s';
+    container.appendChild(el);
+  }
+  setTimeout(()=>{ container.remove(); }, 4600);
 }
 
 function flashScreen(times, withSiren){
@@ -728,6 +814,8 @@ function renderResult(){
   state.finishedAt = Date.now();
   const elapsed = TOTAL_SECONDS - state.secondsLeft;
   headerTitle.textContent = "脱出成功";
+  playFanfare();
+  launchConfetti();
   screen.innerHTML = `
     <div class="panel">
       <div class="bay-tag"><span class="dot"></span>MISSION COMPLETE</div>
@@ -841,7 +929,7 @@ function renderResult(){
 }
 
 /* ---------------- 起動 ---------------- */
-renderStart(true);
+renderStart();
 </script>
 </body>
 </html>
