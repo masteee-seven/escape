@@ -515,11 +515,13 @@ function renderStart(){
       <button class="primary" id="startBtn" disabled>ミッション開始 / シャッターが閉まる前に</button>
     </div>
   `;
+  startBGM();
   const input = document.getElementById('teamInput');
   const btn = document.getElementById('startBtn');
   input.addEventListener('input', ()=>{ btn.disabled = input.value.trim().length===0; });
   input.addEventListener('keydown', e=>{ if(e.key==='Enter' && !btn.disabled) btn.click(); });
   btn.addEventListener('click', ()=>{
+    stopBGM();
     state.teamName = input.value.trim();
     gaugeTeam.textContent = state.teamName;
     bayRow.style.display = 'flex';
@@ -664,6 +666,66 @@ function playWrongSound(){
     osc.start(now);
     osc.stop(now+0.3);
   }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+/* ---------------- ホーム画面ループBGM ---------------- */
+let bgmCtx = null;
+let bgmGain = null;
+let bgmSchedulerId = null;
+let bgmPlaying = false;
+let bgmStepIndex = 0;
+let bgmNextNoteTime = 0;
+const BGM_TEMPO = 132; // bpm
+const BGM_STEP = 60/BGM_TEMPO/2; // 8分音符の長さ(秒)
+// 16ステップの繰り返しループ(不穏さと駆動感のあるマイナー調アルペジオ)
+const BGM_MELODY = [220.00,0,261.63,293.66, 329.63,0,392.00,0, 349.23,0,329.63,293.66, 261.63,0,220.00,0];
+const BGM_BASS   = [110.00,0,0,0, 0,0,0,0, 130.81,0,0,0, 0,0,0,0];
+
+function scheduleBgm(){
+  while(bgmNextNoteTime < bgmCtx.currentTime + 0.12){
+    const step = bgmStepIndex % BGM_MELODY.length;
+    playBgmNote(BGM_MELODY[step], bgmNextNoteTime, 'square', 0.14);
+    playBgmNote(BGM_BASS[step], bgmNextNoteTime, 'triangle', 0.22);
+    bgmNextNoteTime += BGM_STEP;
+    bgmStepIndex++;
+  }
+}
+
+function playBgmNote(freq, time, type, peak){
+  if(!freq) return;
+  const osc = bgmCtx.createOscillator();
+  const gain = bgmCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  osc.connect(gain); gain.connect(bgmGain);
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(peak, time+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time+BGM_STEP*0.95);
+  osc.start(time);
+  osc.stop(time+BGM_STEP);
+}
+
+function startBGM(){
+  if(bgmPlaying) return;
+  try{
+    if(!bgmCtx){ bgmCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if(bgmCtx.state === 'suspended'){ bgmCtx.resume(); }
+    bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = 0.45;
+    bgmGain.connect(bgmCtx.destination);
+    bgmStepIndex = 0;
+    bgmNextNoteTime = bgmCtx.currentTime + 0.05;
+    bgmPlaying = true;
+    bgmSchedulerId = setInterval(scheduleBgm, 50);
+  }catch(e){ /* audio再生に対応していない環境では無視 */ }
+}
+
+function stopBGM(){
+  bgmPlaying = false;
+  if(bgmSchedulerId){ clearInterval(bgmSchedulerId); bgmSchedulerId = null; }
+  if(bgmGain){
+    try{ bgmGain.gain.setTargetAtTime(0, bgmCtx.currentTime, 0.05); }catch(e){}
+  }
 }
 
 function playFanfare(){
@@ -999,6 +1061,26 @@ function toggleFullscreen(){
   }
 }
 document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+
+// ブラウザの自動再生制限対策: 最初のユーザー操作でBGMの再開を試みる
+function unlockAudioOnFirstInteraction(){
+  if(bgmCtx && bgmCtx.state === 'suspended'){ bgmCtx.resume(); }
+  if(!bgmPlaying && !state.startedAt){ startBGM(); }
+}
+['pointerdown','keydown','touchstart'].forEach(evt=>{
+  document.addEventListener(evt, unlockAudioOnFirstInteraction, { once:true });
+});
+
+// タブを離れる・バックグラウンドに回った・ページを閉じる際は確実にBGMを止める
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    stopBGM();
+  } else if(!state.startedAt && !bgmPlaying){
+    startBGM();
+  }
+});
+window.addEventListener('pagehide', stopBGM);
+window.addEventListener('beforeunload', stopBGM);
 
 /* ---------------- 起動 ---------------- */
 renderStart();
