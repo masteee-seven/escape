@@ -458,6 +458,7 @@ const GOOGLE_FORM_CONFIG = {
 
 /* ---------------- 状態 ---------------- */
 const MAX_MISS = 3;
+let cumulativeElapsed = 0; // ゲームオーバー後のやり直しを含めた累積経過時間(秒)
 let state = {
   teamName:"",
   stageIndex:0,
@@ -901,6 +902,7 @@ function renderGameOver(){
 }
 
 function resetGame(){
+  cumulativeElapsed += TOTAL_SECONDS - state.secondsLeft;
   state = {
     teamName:"",
     stageIndex:0,
@@ -941,7 +943,7 @@ function renderVault(){
 function renderResult(){
   clearInterval(state.timerId);
   state.finishedAt = Date.now();
-  const elapsed = TOTAL_SECONDS - state.secondsLeft;
+  const elapsed = cumulativeElapsed + (TOTAL_SECONDS - state.secondsLeft);
   headerTitle.textContent = "脱出成功";
   playFanfare();
   launchConfetti();
