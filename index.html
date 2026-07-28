@@ -108,7 +108,7 @@
   .bay-tag .dot{width:7px; height:7px; border-radius:50%; background:var(--accent-yellow);}
   .panel h2{font-size:20px; margin:0 0 14px;}
   .scenario{
-    background:var(--bg-panel-2); border-left:3px solid var(--metal-light);
+    background:var(--text-light); color:#1c1f26; border-left:3px solid var(--accent-yellow);
     padding:14px 16px; border-radius:6px; font-size:15px; line-height:1.8; margin-bottom:18px;
   }
   .choices{display:flex; flex-direction:column; gap:10px;}
@@ -230,6 +230,23 @@
   .door-right{ border-left:2px solid var(--accent-green); }
   .door-overlay.open .door-left{ transform:translateX(-100%); }
   .door-overlay.open .door-right{ transform:translateX(100%); }
+
+  /* ---- fail stamp ---- */
+  .fail-stamp{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.6);
+    font-family:'Zen Kaku Gothic New', sans-serif; font-weight:900; font-size:min(18vw, 96px);
+    color:var(--accent-red); letter-spacing:0.1em;
+    text-shadow:0 0 30px rgba(226,80,61,0.75), 0 4px 14px rgba(0,0,0,0.6);
+    z-index:997; pointer-events:none; opacity:0;
+    animation:failStampAnim 1.1s ease-out forwards;
+  }
+  @keyframes failStampAnim{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(0.6);}
+    15%{opacity:1; transform:translate(-50%,-50%) scale(1.1);}
+    25%{transform:translate(-50%,-50%) scale(1);}
+    70%{opacity:1;}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1.15);}
+  }
   .gameover-panel{
     background:linear-gradient(180deg, #2a1414, #1c0f0f);
     border:1px solid var(--accent-red); border-radius:14px; padding:28px 24px; text-align:center;
@@ -302,21 +319,7 @@ const STAGES = [
     recap:"適切な場所・時間・言葉で行う指導は問題ない。危ういのは「人前」「人格否定」「長時間の繰り返し」。"
   },
   {
-    bay:"BAY 2｜事務所", theme:"パワーハラスメント", difficulty:3,
-    scenario:"商談で大きなミスをした社員に対し、上司が始末書の提出を求め、原因と再発防止策を書かせた。始末書は上司と本人のみが確認し、他の社員には共有していない。",
-    q:"この対応について正しいのはどれ？",
-    choices:[
-      "始末書の提出を求めること自体がパワハラにあたる",
-      "業務上の適正な範囲"
-    ],
-    correct:1,
-    explain:"始末書の提出要求そのものは、業務上必要かつ相当な範囲であれば適正な指導の一環とされます。本人を委縮させる文言を書かせる、他の社員の前で読み上げさせる等の「見せしめ」要素が加わると、パワハラ(過大な要求・精神的攻撃)に該当し得ます。",
-    why:"「始末書=罰」という感覚から、本来問題のない指導まで一律にNGだと思い込んでしまうことがあります。逆に、内容や運用次第では適正な指導が懲罰的な見せしめに変わってしまうため、目的・範囲・共有範囲をあらかじめ明確にしておくことが重要です。",
-    digit:"8",
-    recap:"始末書や指導そのものは問題ではない。危ういのは「見せしめ」「共有範囲の逸脱」。"
-  },
-  {
-    bay:"BAY 3｜Web会議ブース", theme:"リモートハラスメント", difficulty:2,
+    bay:"BAY 2｜Web会議ブース", theme:"リモートハラスメント", difficulty:2,
     scenario:"リモート会議で新人のカメラがずっとOFFになっている。上司は「顔を見て話したいから、カメラをONにしてほしい」と頼んだ。",
     q:"この対応について正しいのはどれ？",
     choices:[
@@ -328,6 +331,20 @@ const STAGES = [
     why:"「見えない不安」が、過剰な監視要求に化けてしまうことがあります。ルールが不在のまま各管理職の感覚に判断を委ねると、同じ会社の中でも扱いに天国と地獄が生まれます。",
     digit:"2",
     recap:"カメラON要請自体は合理的な範囲。ただし執拗な要求は逆効果。会社としてカメラポリシーを決めておく。"
+  },
+  {
+    bay:"BAY 3｜事務所", theme:"パワーハラスメント", difficulty:3,
+    scenario:"大きなミスをした社員に対し、上司が始末書の提出を求め、原因と再発防止策を書かせた。始末書は上司と本人のみが確認し、他の社員には共有していない。",
+    q:"この対応について正しいのはどれ？",
+    choices:[
+      "始末書の提出を求めること自体がパワハラにあたる",
+      "業務上の適正な範囲"
+    ],
+    correct:1,
+    explain:"始末書の提出要求そのものは、業務上必要かつ相当な範囲であれば適正な指導の一環とされます。本人を委縮させる文言を書かせる、他の社員の前で読み上げさせる等の「見せしめ」要素が加わると、パワハラ(過大な要求・精神的攻撃)に該当し得ます。",
+    why:"「始末書=罰」という感覚から、本来問題のない指導まで一律にNGだと思い込んでしまうことがあります。逆に、内容や運用次第では適正な指導が懲罰的な見せしめに変わってしまうため、目的・範囲・共有範囲をあらかじめ明確にしておくことが重要です。",
+    digit:"8",
+    recap:"始末書や指導そのものは問題ではない。危ういのは「見せしめ」「共有範囲の逸脱」。"
   },
   {
     bay:"BAY 4｜バックヤード", theme:"シャドーIT・情報管理", difficulty:3,
@@ -545,7 +562,7 @@ function renderStage(i){
       <div style="font-weight:700; margin-bottom:10px; font-size:15px;">${s.q}</div>
       <button class="ghost" id="speakQBtn" style="margin-bottom:14px;">🔊 問いを読み上げる</button>
       <div class="choices" id="choicesWrap">
-        ${s.choices.map((c,ci)=>`<button class="choice" data-i="${ci}"><span class="letter">${String.fromCharCode(65+ci)}</span><span>${c}</span></button>`).join('')}
+        ${(Math.random()<0.5 ? [0,1] : [1,0]).map((origIdx,displayIdx)=>`<button class="choice" data-i="${origIdx}"><span class="letter">${String.fromCharCode(65+displayIdx)}</span><span>${s.choices[origIdx]}</span></button>`).join('')}
       </div>
       <div id="feedbackWrap"></div>
     </div>
@@ -561,8 +578,12 @@ function handleAnswer(stageIdx, choiceIdx){
   const buttons = document.querySelectorAll('#choicesWrap .choice');
   buttons.forEach(b=>b.setAttribute('disabled','true'));
   const isCorrect = choiceIdx === s.correct;
-  buttons[choiceIdx].classList.add(isCorrect ? 'correct' : 'wrong');
-  if(!isCorrect){ buttons[s.correct].classList.add('correct'); }
+  const clickedBtn = document.querySelector(`#choicesWrap .choice[data-i="${choiceIdx}"]`);
+  clickedBtn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    const correctBtn = document.querySelector(`#choicesWrap .choice[data-i="${s.correct}"]`);
+    correctBtn.classList.add('correct');
+  }
 
   state.answered[stageIdx] = true;
   if(isCorrect){
@@ -574,6 +595,7 @@ function handleAnswer(stageIdx, choiceIdx){
     state.bayResult[stageIdx] = 'ng';
     state.wrongCount++;
     gaugeMiss.textContent = `${state.wrongCount}/${MAX_MISS}`;
+    showFailStamp();
     if(state.wrongCount < MAX_MISS){ playWrongSound(); }
   }
   renderBayRow();
@@ -789,6 +811,14 @@ function launchConfetti(){
     container.appendChild(el);
   }
   setTimeout(()=>{ container.remove(); }, 4600);
+}
+
+function showFailStamp(){
+  const el = document.createElement('div');
+  el.className = 'fail-stamp';
+  el.textContent = '失敗';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 1150);
 }
 
 function playDoorOpenAnimation(){
